@@ -6,8 +6,7 @@
 * version : 1.0
  */
 (function(window,undefined){
-	var isToday,
-		i,
+	var i,
 	  curYM,
 	  yearOpen = 0,
 	  monthOpen = 0,
@@ -69,7 +68,7 @@
     0x955045044550, 0x505145454554, 0x955045044150, 0x505045454554, 0x955044044140, 0x405045044554, 0x555044044140, 0x555555555555,
     0x405045044550, 0x555044044000, 0x555004004000, 0x405045044150, 0x505045054554, 0x405044044140, 0x505045044554, 0x550004000000,
     0x5044044140,   0x550000000000, 0x5044044000,   0x540000000000, 0x5044004000];
-  //1900-2100年对应节气种类的序号,对应上表中的序号，一个长整型保存4年序号，每8bit一个序号（序号=0-68) 
+  //1900-2100年对应节气种类的序号,对应上表中的序号，一个单位保存4年序号，每8bit一个序号（序号=0-68) 
   var yearToNum = [
   	0x10203,    0x4010503,  0x4010503,  0x6070809,  0xA0B0C09,  0xA0D0C0E,  0xA0D010E,  0xF000102,  0x10000105, 0x10000105,
     0x10000105, 0x11120708, 0x13141508, 0x13140D01, 0x16140001, 0x17180001, 0x17180001, 0x19180001, 0x191A001B, 0x1C1D1E0B,
@@ -84,7 +83,6 @@
 	};
   Calendar.fn = Calendar.prototype = {
   	init : function(target) {
-  		// isToday = true;
   		return this.createView(target);
   	},
   	con : {},
@@ -522,19 +520,47 @@
   		}
   		holOpen = (holOpen+1)&1;
   	},
-  	//显示当前时间
-  	showTimeBlock : function() {
-  		var time = this.module.timeBar || undefined;
-  		if(time && time.innerText!='')
-  		{
-  			var a = setInterval(function(){
-  				var sT = new Date();
-					sTh = sT.getHours().toString().length==1 ? '0'+sT.getHours() : sT.getHours();
-					sTm = sT.getMinutes().toString().length==1 ? '0'+sT.getMinutes() : sT.getMinutes();
-					sTs = sT.getSeconds().toString().length==1 ? '0'+sT.getSeconds() : sT.getSeconds();
-  				time.innerText = sTh + ':' + sTm + ':' + sTs;
-  			},1000);
-  		}
+  	//创建组件
+  	createModule : function() {
+  		var	_this = this,
+  			date = new Date(),
+  			tYear = date.getFullYear(),
+  			tMonth = date.getMonth(),
+  			tDay = date.getDate();
+  		_this.module = {
+  			'calRoot' : _this.getEmt('prt_div'),
+  			'calHead' : _this.getEmt('c-header'),
+  			'ltYear' : _this.getEmt('prev-y-bar'),
+  			'ntYear' : _this.getEmt('next-y-bar'),
+  			'selectYear' : _this.getEmt('select-year-bar'),
+  			'yearField' : _this.getEmt('year_field'),
+  			'yearList' : _this.getEmt('year_list'),
+  			'ltMonth' : _this.getEmt('prev-m-bar'),
+  			'ntMonth' : _this.getEmt('next-m-bar'),
+  			'selectMonth' : _this.getEmt('select-month-bar'),
+  			'monthField' : _this.getEmt('month_field'),
+  			'monthList' : _this.getEmt('month_list'),
+  			'selectHol' : _this.getEmt('hol-bar'),
+  			'holField' : _this.getEmt('hol_field'),
+  			'holList' : _this.getEmt('hol_list'),
+  			'goBack' : _this.getEmt('backToday'),
+  			'timeBar' : _this.getEmt('cur_time'),
+  			'calBody' : _this.getEmt('dates_bd'),
+  			'lunarPanel' : _this.getEmt('lunar_panel'),
+  			'curDate' : _this.getEmt('ln_date'),
+  			'curWeekDay' : _this.getEmt('ln_weekday'),
+  			'curDateNum' : _this.getEmt('date_sp'),
+  			'curLunar' : _this.getEmt('date_ln'),
+  			'lunarSpecial' : _this.getEmt('g_lunar'),
+  			'lunarInfo' : _this.getEmt('g_ln_info'),
+  			'lunarAnimal' : _this.getEmt('g_animal'),
+  			'lunarAstro' : _this.getEmt('g_astro')
+  		};
+  		_this.showTimeBlock();
+  		_this.showLunarBlock(tYear,tMonth,tDay);
+  		_this.showCurrentCal(tYear,tMonth);
+  		curYM = [tYear,tMonth];
+  		_this.addEventAll();
   	},
   	//显示当月日历
   	showCurrentCal : function(y,m) {
@@ -619,7 +645,119 @@
 	  	}
 	  	this.refreshPanel(curYear,curMonth,dy);
   	},
-  	//计算当年阳历并返回某一个月的天数
+  	//显示当前北京时间
+  	showTimeBlock : function() {
+  		var time = this.module.timeBar || undefined;
+  		if(time && time.innerText!='')
+  		{
+  			var a = setInterval(function(){
+  				var sT = new Date();
+					sTh = sT.getHours().toString().length==1 ? '0'+sT.getHours() : sT.getHours();
+					sTm = sT.getMinutes().toString().length==1 ? '0'+sT.getMinutes() : sT.getMinutes();
+					sTs = sT.getSeconds().toString().length==1 ? '0'+sT.getSeconds() : sT.getSeconds();
+  				time.innerText = sTh + ':' + sTm + ':' + sTs;
+  			},1000);
+  		}
+  	},
+  	//显示农历详细信息
+  	showLunarBlock : function(y,m,d) {
+  		var curDate = this.module.curDate,
+  			curWeekDay = this.module.curWeekDay,
+  			curDateNum = this.module.curDateNum,
+  			lunarSpecial = this.module.lunarSpecial,
+  			lunarInfo = this.module.lunarInfo,
+  			lunarAnimal = this.module.lunarAnimal,
+  			lunarAstro = this.module.lunarAstro;
+  		var lum,lud,lndy;
+			lum = m < 9 ? '0'.concat(m+1) : ''.concat(m+1);
+			lud = d < 10 ? '0'+ d : d;
+			lndy = this.getLunarDay(y,m,d);
+			var wd =  new Date(y,m,1).getDay()==0 ? 6 : new Date(y,m,1).getDay()-1;
+			var weeksDay = (d+wd)%7==0 ? '星期日' : '星期'+ weeks[(d+wd)%7-1];
+			curDate.innerText = y +'-'+lum +'-'+lud;
+			curWeekDay.innerText = weeksDay;
+			curDateNum.innerText = d;
+			if(lndy[3] == 0)
+				lunarSpecial.innerText = '农历'+ months[lndy[1]-1]+'月'+this.switchFont(lndy[2]);
+			else if(lndy[3] == 1)
+				lunarSpecial.innerText = '农历'+ '闰' + months[lndy[1]-1]+'月'+this.switchFont(lndy[2]);
+
+			var dates = new Date(y,m,d);
+			var dzMonth = [];
+  		var vy = (y-1900) % 60,vm = (y-1900) % 5 * 12 + m,vd = Math.floor((dates.getTime()-new Date(1900,0,1).getTime())/1000/3600/24%60);
+			dzMonth.push(this.getDizhi(6,0,vy,[m,d]),this.getDizhi(3,1,vm,[y,m,d]),this.getDizhi(0,10,vd));
+			lunarInfo.innerText = dzMonth[0]+'年'+dzMonth[1]+'月'+dzMonth[2]+'日';
+			//以农历天之年最后一个字为基准，进行映射【生肖】
+			var inx = tbRightYear.indexOf(dzMonth[0].substr(1));
+			lunarAnimal.innerText = ani[inx]+'年';
+			//找出【星座】
+			lunarAstro.innerText = this.getAstro(m,d);
+  	},
+  	//绑定所有事件的方法
+  	addEventAll : function() {
+  		var _this = this,
+  			calBody = this.module.calBody,
+  			ltYear = this.module.ltYear,
+  			ntYear = this.module.ntYear,
+  			selectYear = this.module.selectYear,
+  			yearField = this.module.yearField,
+  			ltMonth = this.module.ltMonth,
+  			ntMonth = this.module.ntMonth,
+  			selectMonth = this.module.selectMonth,
+  			monthList = this.module.monthList,
+  			selectHol = this.module.selecHol,
+  			holField = this.module.holField,
+  			goBack = this.module.goBack;
+
+  		if(ltYear.addEventListener)
+  			ltYear.addEventListener('click',function(e){_this.toPrevYear(e)},false);
+  		else if(ltYear.attachEvent)
+  			ltYear.attchEvent('onclick',function(e){_this.toPrevYear(e)});
+
+  		if(ntYear.addEventListener)
+  			ntYear.addEventListener('click',function(e){_this.toNextYear(e)},false);
+  		else if(ntYear.attachEvent)
+  			ntYear.attchEvent('onclick',function(e){_this.toNextYear(e)});
+
+  		if(ltMonth.addEventListener)
+  			ltMonth.addEventListener('click',function(e){_this.toPrevMonth(e)},false);
+  		else if(ltMonth.attachEvent)
+  			ltMonth.attchEvent('onclick',function(e){_this.toPrevMonth(e)});
+
+  		if(ntMonth.addEventListener)
+  			ntMonth.addEventListener('click',function(e){_this.toNextMonth(e)},false);
+  		else if(ntMonth.attachEvent)
+  			ntMonth.attchEvent('onclick',function(e){_this.toNextMonth(e)});
+
+  		if(selectYear.addEventListener)
+  			selectYear.addEventListener('click',function(e){_this.showYearList(e)},false);
+  		else if(selectYear.attachEvent)
+  			selectYear.attchEvent('onclick',function(e){_this.showYearList(e)});
+
+  		if(selectMonth.addEventListener)
+  			selectMonth.addEventListener('click',function(e){_this.showMonthList(e)},false);
+  		else if(selectMonth.attachEvent)
+  			selectMonth.attchEvent('onclick',function(e){_this.showMonthList(e)});
+
+  		if(holField.addEventListener)
+  			holField.addEventListener('click',function(e){_this.showHolList(e)},false);
+  		else if(holField.attachEvent)
+  			holField.attchEvent('onclick',function(e){_this.showHolList(e)});
+
+  		if(goBack.addEventListener)
+  			goBack.addEventListener('click',function(e){_this.backCurrentDay(e)},false);
+  		else if(goBack.attachEvent)
+  			goBack.attchEvent('onclick',function(e){_this.backCurrentDay(e)});
+  		var item = calBody.getElementsByTagName('li');
+  		for(var i = 0;i < item.length;i++){
+  			var self = item[i];
+  			if(self.addEventListener)
+  			self.addEventListener('click',function(e){_this.showSpecDate(e)},false);
+	  		else if(self.attachEvent)
+	  			self.attchEvent('onclick',function(e){_this.showSpecDate(e)});
+  		}
+  	},
+  	//获取某年某月的公历天数
   	getSolarDays : function(y,m) {
   		var fbDays;
   		if(m < 0){
@@ -639,168 +777,6 @@
   			fbDays = 28;
   		var arMon = [31,fbDays,31,30,31,30,31,31,30,31,30,31];
   		return arMon[m];
-  	},
-  	//计算当天农历
-  	getLunarDay : function(y,m,d) {
-  		//针对1900年农历正月1日前即1900年阳历1月31日前的情况
-  		if(y==1900 && m <= 0 && d < 31)
-  			return [1899,12+m,d,0];
-  		//以1900年农历正月1日为基准
-  		var standard = new Date(1900,0,31);
-  		//日期格式化
-  		if(m < 0){
-  			m = 11;
-  			y--;
-  		}else if(m > 11){
-  			m = 0;
-  			y++;
-  		}
-  		var curr = new Date(y,m,d);
-  		//1900年距该日期的总天数
-  		var allDays = (curr.getTime() - standard.getTime())/1000/3600/24 + 1;
-  		//这年的农历总天数,闰月数,总农历月数
-  		var lunarDays,leapMonth,totalMonths;
-  		for(var i = 1900;i <= 2100;i++)
-  		{
-  			var lunarDays = this.getYearDays(i);
-  			if(allDays <= lunarDays) {
-			  	leapMonth = this.getLeapMonth(i);
-					totalMonths = leapMonth ? 13 : 12;
-      		// 遍历月份
-		      for (var j = 0; j < totalMonths; j++) {
-		      	var tmp = totalMonths - j - 1;
-		        var days = lunarData[i - 1900] & (1 << tmp) ? 30 : 29;
-		        // 不是 j 月
-		        if (allDays > days) {
-		          allDays -= days;
-		        } else {
-		          if (leapMonth) {  // 如果当年有闰月，还需判断
-		            if (j < leapMonth)
-		              return [i, j + 1, allDays, 0];
-		            else if (j === leapMonth)
-		              return [i, j, allDays, 1];
-		            else 
-		              return [i, j, allDays, 0];
-		          } else {
-		            return [i, j + 1, allDays, 0];  // i 年 j+1 月 allDays 日，0 表示非闰月
-		          }
-		        }
-		      }
-		    } else {
-		      allDays -= lunarDays;
-		    }
-  		}
-  	},
-  	//获取指定年份的农历总天数
-  	getYearDays : function(y) {
-  		var leapMonth = this.getLeapMonth(y),
-  			totalMonths = leapMonth ? 13 : 12;
-  		var totalDays = 0;
-  		for(var i = 0;i < totalMonths;i++){
-  			var tmp = totalMonths - i - 1;
-  			totalDays += lunarData[y - 1900] & (1 << tmp) ? 30 : 29;
-  		}
-  		return totalDays;
-  	},
-  	//获取指定年份闰月月份
-  	getLeapMonth : function(y) {
-  		y -= 1900;
-  		var month = 0;
-  		for(var i = 16;i < 20;i++)
-  			month += lunarData[y] & (1 << i);
-  		return month >> 16;
-  	},
-  	//获得当月节气日期
-  	getMfDate : function(y,m) {
-  		if(m < 0){
-  			y--;
-  			m = 11;
-  		}else if(m > 11){
-  			y++;
-  			m = 0;
-  		}
-  		var yIndex = Math.floor((y-1900)/4),yInyNum = (y-1900)%4;
-  		var strYear = yearToNum[yIndex].toString(2);
-  		var strTmp,arr,tyFet;
-  		if(strYear.length < 32 && yIndex <= 50) {
-  			strTmp = '';
-  			for(i = 0;i < 32 - strYear.length;i++)
-  				strTmp += '0';
-  			strYear = strTmp.concat(strYear);
-  		}
-  		strYear = parseInt(strYear.substr(yInyNum * 8,8),2);
-  		tyFet = feastNumber[strYear].toString(2);
-  		if(tyFet.length < 48){
-  			strTmp = '';
-  			for(i = 0;i < 48 - tyFet.length;i++)
-      		strTmp += '0';
-      	tyFet = strTmp.concat(tyFet);
-  		}
-  		arr = tyFet.match(/(\d{2})/g);
-  		for(i = 0;i < arr.length;i++)
-  			arr[i] = parseInt(arr[i],2) + basicDate[i];
-  		if(y==2101 && m==0)
-  			return [5,20];
-  		return [arr[2*m],arr[2*m+1]];
-  	},
-  	//计算天干地支 返回年/月/日
-  	getDizhi : function(s,t,vy,val) {
-  		var p = s,q = t,v;
-  		val = val || undefined;
-			for(v = 1;v <= vy;v++)
-  		{
-  			p = (p+1)%10;
-  			q = (q+1)%12;
-  		}
-  		if(val === undefined || val === null){
-  			return tbLeftYear[p]+tbRightYear[q];
-  		}
-  		else{
-  			if(val.length == 3){
-  				//如果日期小于一月当中第一个节气,那么回退一个月
-	  			if(val[2] < this.getMfDate(val[0],val[1])[0])
-	  				return tbLeftYear[(p-1+10)%10]+tbRightYear[(q-1+12)%12];
-	  			else
-	  				return tbLeftYear[p]+tbRightYear[q];
-	  		}
-	  		else{
-	  			if(val[1] < 31 && val[0] == 0)
-	  				return tbLeftYear[(p-1+10)%10]+tbRightYear[(q-1+12)%12];
-	  			else
-	  				return tbLeftYear[p]+tbRightYear[q];
-	  		}
-  		}
-  	},
-  	//星座
-  	getAstro : function(m,d) {
-  		var astro = ['水瓶座','双鱼座','白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','山羊座'];
-  		var m = m + 1;
-  		switch(m){
-  			case 1 :
-  				return d < 20 ? astro[11] : astro[0];break;
-  			case 2 :
-  				return d < 19 ? astro[0] : astro[1];break;
-  			case 3 :
-  				return d < 21 ? astro[1] : astro[2];break;
-  			case 4 :
-  				return d < 20 ? astro[2] : astro[3];break;
-  			case 5 :
-  				return d < 21 ? astro[3] : astro[4];break;
-  			case 6 :
-  				return d < 21 ? astro[4] : astro[5];break;
-  			case 7 :
-  			  return d < 21 ? astro[5] : astro[6];break;
-  			case 8 : 
-  			  return d < 21 ? astro[6] : astro[7];break;
-  			case 9 : 
-  			  return d < 21 ? astro[7] : astro[8];break;
-  			case 10 :
-  				return d < 23 ? astro[8] : astro[9];break;
-  			case 11 :
-  				return d < 22 ? astro[9] : astro[10];break;
-  			case 12 :
-  				return d < 22 ? astro[10] : astro[11];break;
-  		}
   	},
   	//显示指定日期
   	showSpecDate : function(e) {
@@ -914,81 +890,75 @@
   			}
   		}
   	},
-  	//显示农历详细信息
-  	showLunarBlock : function(y,m,d) {
-  		var curDate = this.module.curDate,
-  			curWeekDay = this.module.curWeekDay,
-  			curDateNum = this.module.curDateNum,
-  			lunarSpecial = this.module.lunarSpecial,
-  			lunarInfo = this.module.lunarInfo,
-  			lunarAnimal = this.module.lunarAnimal,
-  			lunarAstro = this.module.lunarAstro;
-  		var lum,lud,lndy;
-			lum = m < 9 ? '0'.concat(m+1) : ''.concat(m+1);
-			lud = d < 10 ? '0'+ d : d;
-			lndy = this.getLunarDay(y,m,d);
-			var wd =  new Date(y,m,1).getDay()==0 ? 6 : new Date(y,m,1).getDay()-1;
-			var weeksDay = (d+wd)%7==0 ? '星期日' : '星期'+ weeks[(d+wd)%7-1];
-			curDate.innerText = y +'-'+lum +'-'+lud;
-			curWeekDay.innerText = weeksDay;
-			curDateNum.innerText = d;
-			if(lndy[3] == 0)
-				lunarSpecial.innerText = '农历'+ months[lndy[1]-1]+'月'+this.switchFont(lndy[2]);
-			else if(lndy[3] == 1)
-				lunarSpecial.innerText = '农历'+ '闰' + months[lndy[1]-1]+'月'+this.switchFont(lndy[2]);
-
-			var dates = new Date(y,m,d);
-			var dzMonth = [];
-  		var vy = (y-1900) % 60,vm = (y-1900) % 5 * 12 + m,vd = Math.floor((dates.getTime()-new Date(1900,0,1).getTime())/1000/3600/24%60);
-			dzMonth.push(this.getDizhi(6,0,vy,[m,d]),this.getDizhi(3,1,vm,[y,m,d]),this.getDizhi(0,10,vd));
-			lunarInfo.innerText = dzMonth[0]+'年'+dzMonth[1]+'月'+dzMonth[2]+'日';
-			//以农历天之年最后一个字为基准，进行映射【生肖】
-			var inx = tbRightYear.indexOf(dzMonth[0].substr(1));
-			lunarAnimal.innerText = ani[inx]+'年';
-			//找出【星座】
-			lunarAstro.innerText = this.getAstro(m,d);
+  	//计算当天农历
+  	getLunarDay : function(y,m,d) {
+  		//针对1900年农历正月1日前即1900年阳历1月31日前的情况
+  		if(y==1900 && m <= 0 && d < 31)
+  			return [1899,12+m,d,0];
+  		//以1900年农历正月1日为基准
+  		var standard = new Date(1900,0,31);
+  		//日期格式化
+  		if(m < 0){
+  			m = 11;
+  			y--;
+  		}else if(m > 11){
+  			m = 0;
+  			y++;
+  		}
+  		var curr = new Date(y,m,d);
+  		//1900年距该日期的总天数
+  		var allDays = (curr.getTime() - standard.getTime())/1000/3600/24 + 1;
+  		//这年的农历总天数,闰月数,总农历月数
+  		var lunarDays,leapMonth,totalMonths;
+  		for(var i = 1900;i <= 2100;i++)
+  		{
+  			var lunarDays = this.getYearDays(i);
+  			if(allDays <= lunarDays) {
+			  	leapMonth = this.getLeapMonth(i);
+					totalMonths = leapMonth ? 13 : 12;
+      		// 遍历月份
+		      for (var j = 0; j < totalMonths; j++) {
+		      	var tmp = totalMonths - j - 1;
+		        var days = lunarData[i - 1900] & (1 << tmp) ? 30 : 29;
+		        // 不是 j 月
+		        if (allDays > days) {
+		          allDays -= days;
+		        } else {
+		          if (leapMonth) {  // 如果当年有闰月，还需判断
+		            if (j < leapMonth)
+		              return [i, j + 1, allDays, 0];
+		            else if (j === leapMonth)
+		              return [i, j, allDays, 1];
+		            else 
+		              return [i, j, allDays, 0];
+		          } else {
+		            return [i, j + 1, allDays, 0];  // i 年 j+1 月 allDays 日，0 表示非闰月
+		          }
+		        }
+		      }
+		    } else {
+		      allDays -= lunarDays;
+		    }
+  		}
   	},
-  	//创建组件
-  	createModule : function() {
-  		var	_this = this,
-  			date = new Date(),
-  			tYear = date.getFullYear(),
-  			tMonth = date.getMonth(),
-  			tDay = date.getDate();
-  		_this.module = {
-  			'calRoot' : _this.getEmt('prt_div'),
-  			'calHead' : _this.getEmt('c-header'),
-  			'ltYear' : _this.getEmt('prev-y-bar'),
-  			'ntYear' : _this.getEmt('next-y-bar'),
-  			'selectYear' : _this.getEmt('select-year-bar'),
-  			'yearField' : _this.getEmt('year_field'),
-  			'yearList' : _this.getEmt('year_list'),
-  			'ltMonth' : _this.getEmt('prev-m-bar'),
-  			'ntMonth' : _this.getEmt('next-m-bar'),
-  			'selectMonth' : _this.getEmt('select-month-bar'),
-  			'monthField' : _this.getEmt('month_field'),
-  			'monthList' : _this.getEmt('month_list'),
-  			'selectHol' : _this.getEmt('hol-bar'),
-  			'holField' : _this.getEmt('hol_field'),
-  			'holList' : _this.getEmt('hol_list'),
-  			'goBack' : _this.getEmt('backToday'),
-  			'timeBar' : _this.getEmt('cur_time'),
-  			'calBody' : _this.getEmt('dates_bd'),
-  			'lunarPanel' : _this.getEmt('lunar_panel'),
-  			'curDate' : _this.getEmt('ln_date'),
-  			'curWeekDay' : _this.getEmt('ln_weekday'),
-  			'curDateNum' : _this.getEmt('date_sp'),
-  			'curLunar' : _this.getEmt('date_ln'),
-  			'lunarSpecial' : _this.getEmt('g_lunar'),
-  			'lunarInfo' : _this.getEmt('g_ln_info'),
-  			'lunarAnimal' : _this.getEmt('g_animal'),
-  			'lunarAstro' : _this.getEmt('g_astro')
-  		};
-  		_this.showTimeBlock();
-  		_this.showLunarBlock(tYear,tMonth,tDay);
-  		_this.showCurrentCal(tYear,tMonth);
-  		curYM = [tYear,tMonth];
-  		_this.addEventAll();
+  	//获取指定年份的农历总天数
+  	getYearDays : function(y) {
+  		var leapMonth = this.getLeapMonth(y),
+  			totalMonths = leapMonth ? 13 : 12;
+  		var totalDays = 0;
+  		for(var i = 0;i < totalMonths;i++){
+  			var tmp = totalMonths - i - 1;
+  			totalDays += lunarData[y - 1900] & (1 << tmp) ? 30 : 29;
+  		}
+  		return totalDays;
+  	},
+  	//获取某年的闰月月份
+  	getLeapMonth : function(y) {
+  		y -= 1900;
+  		var month = 0;
+  		for(var i = 16;i < 20;i++)
+  			month += lunarData[y] & (1 << i);
+  		return month >> 16;
   	},
   	//显示节气及国际节假日
   	refreshPanel : function(y,m,indexDay) {
@@ -1119,7 +1089,6 @@
   				}
   			}
   		}
-
   	},
   	//算出一年中的所有节假日，假日在31-37
   	getHolidays : function(y) {
@@ -1227,6 +1196,98 @@
   		holda.length = i;
   		return holda;
   	},
+  	//计算天干地支 返回年/月/日
+  	getDizhi : function(s,t,vy,val) {
+  		var p = s,q = t,v;
+  		val = val || undefined;
+			for(v = 1;v <= vy;v++)
+  		{
+  			p = (p+1)%10;
+  			q = (q+1)%12;
+  		}
+  		if(val === undefined || val === null){
+  			return tbLeftYear[p]+tbRightYear[q];
+  		}
+  		else{
+  			if(val.length == 3){
+  				//如果日期小于一月当中第一个节气,那么回退一个月
+	  			if(val[2] < this.getMfDate(val[0],val[1])[0])
+	  				return tbLeftYear[(p-1+10)%10]+tbRightYear[(q-1+12)%12];
+	  			else
+	  				return tbLeftYear[p]+tbRightYear[q];
+	  		}
+	  		else{
+	  			if(val[1] < 31 && val[0] == 0)
+	  				return tbLeftYear[(p-1+10)%10]+tbRightYear[(q-1+12)%12];
+	  			else
+	  				return tbLeftYear[p]+tbRightYear[q];
+	  		}
+  		}
+  	},
+		//获得某年某月的节气日期
+  	getMfDate : function(y,m) {
+  		if(m < 0){
+  			y--;
+  			m = 11;
+  		}else if(m > 11){
+  			y++;
+  			m = 0;
+  		}
+  		var yIndex = Math.floor((y-1900)/4),yInyNum = (y-1900)%4;
+  		var strYear = yearToNum[yIndex].toString(2);
+  		var strTmp,arr,tyFet;
+  		if(strYear.length < 32 && yIndex <= 50) {
+  			strTmp = '';
+  			for(i = 0;i < 32 - strYear.length;i++)
+  				strTmp += '0';
+  			strYear = strTmp.concat(strYear);
+  		}
+  		strYear = parseInt(strYear.substr(yInyNum * 8,8),2);
+  		tyFet = feastNumber[strYear].toString(2);
+  		if(tyFet.length < 48){
+  			strTmp = '';
+  			for(i = 0;i < 48 - tyFet.length;i++)
+      		strTmp += '0';
+      	tyFet = strTmp.concat(tyFet);
+  		}
+  		arr = tyFet.match(/(\d{2})/g);
+  		for(i = 0;i < arr.length;i++)
+  			arr[i] = parseInt(arr[i],2) + basicDate[i];
+  		if(y==2101 && m==0)
+  			return [5,20];
+  		return [arr[2*m],arr[2*m+1]];
+  	},
+  	//星座
+  	getAstro : function(m,d) {
+  		var astro = ['水瓶座','双鱼座','白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','山羊座'];
+  		var m = m + 1;
+  		switch(m){
+  			case 1 :
+  				return d < 20 ? astro[11] : astro[0];break;
+  			case 2 :
+  				return d < 19 ? astro[0] : astro[1];break;
+  			case 3 :
+  				return d < 21 ? astro[1] : astro[2];break;
+  			case 4 :
+  				return d < 20 ? astro[2] : astro[3];break;
+  			case 5 :
+  				return d < 21 ? astro[3] : astro[4];break;
+  			case 6 :
+  				return d < 21 ? astro[4] : astro[5];break;
+  			case 7 :
+  			  return d < 21 ? astro[5] : astro[6];break;
+  			case 8 : 
+  			  return d < 21 ? astro[6] : astro[7];break;
+  			case 9 : 
+  			  return d < 21 ? astro[7] : astro[8];break;
+  			case 10 :
+  				return d < 23 ? astro[8] : astro[9];break;
+  			case 11 :
+  				return d < 22 ? astro[9] : astro[10];break;
+  			case 12 :
+  				return d < 22 ? astro[10] : astro[11];break;
+  		}
+  	},
   	getEmt : function(id,parent) {
   		var parent = parent || document;
   		return parent.getElementById(id);
@@ -1260,70 +1321,6 @@
   			el.className += name;
   		else
   			el.className += ' '+name;
-  	},
-  	addEventAll : function() {
-  		var _this = this,
-  			calBody = this.module.calBody,
-  			ltYear = this.module.ltYear,
-  			ntYear = this.module.ntYear,
-  			selectYear = this.module.selectYear,
-  			yearField = this.module.yearField,
-  			ltMonth = this.module.ltMonth,
-  			ntMonth = this.module.ntMonth,
-  			selectMonth = this.module.selectMonth,
-  			monthList = this.module.monthList,
-  			selectHol = this.module.selecHol,
-  			holField = this.module.holField,
-  			goBack = this.module.goBack;
-
-  		if(ltYear.addEventListener)
-  			ltYear.addEventListener('click',function(e){_this.toPrevYear(e)},false);
-  		else if(ltYear.attachEvent)
-  			ltYear.attchEvent('onclick',function(e){_this.toPrevYear(e)});
-
-  		if(ntYear.addEventListener)
-  			ntYear.addEventListener('click',function(e){_this.toNextYear(e)},false);
-  		else if(ntYear.attachEvent)
-  			ntYear.attchEvent('onclick',function(e){_this.toNextYear(e)});
-
-  		if(ltMonth.addEventListener)
-  			ltMonth.addEventListener('click',function(e){_this.toPrevMonth(e)},false);
-  		else if(ltMonth.attachEvent)
-  			ltMonth.attchEvent('onclick',function(e){_this.toPrevMonth(e)});
-
-  		if(ntMonth.addEventListener)
-  			ntMonth.addEventListener('click',function(e){_this.toNextMonth(e)},false);
-  		else if(ntMonth.attachEvent)
-  			ntMonth.attchEvent('onclick',function(e){_this.toNextMonth(e)});
-
-  		if(selectYear.addEventListener)
-  			selectYear.addEventListener('click',function(e){_this.showYearList(e)},false);
-  		else if(selectYear.attachEvent)
-  			selectYear.attchEvent('onclick',function(e){_this.showYearList(e)});
-
-  		if(selectMonth.addEventListener)
-  			selectMonth.addEventListener('click',function(e){_this.showMonthList(e)},false);
-  		else if(selectMonth.attachEvent)
-  			selectMonth.attchEvent('onclick',function(e){_this.showMonthList(e)});
-
-  		if(holField.addEventListener)
-  			holField.addEventListener('click',function(e){_this.showHolList(e)},false);
-  		else if(holField.attachEvent)
-  			holField.attchEvent('onclick',function(e){_this.showHolList(e)});
-
-  		if(goBack.addEventListener)
-  			goBack.addEventListener('click',function(e){_this.backCurrentDay(e)},false);
-  		else if(goBack.attachEvent)
-  			goBack.attchEvent('onclick',function(e){_this.backCurrentDay(e)});
-
-  		var item = calBody.getElementsByTagName('li');
-  		for(var i = 0;i < item.length;i++){
-  			var self = item[i];
-  			if(self.addEventListener)
-  			self.addEventListener('click',function(e){_this.showSpecDate(e)},false);
-	  		else if(self.attachEvent)
-	  			self.attchEvent('onclick',function(e){_this.showSpecDate(e)});
-  		}
   	}
   };
   Calendar.fn.init.prototype = Calendar.fn;
